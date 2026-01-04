@@ -8,7 +8,7 @@ import { logger } from '../logger.js';
  */
 const SOURCE_CONFIG = {
   // TODO: Replace with actual source URL provided by user
-  baseUrl: '',
+  baseUrl: 'https://thepiratebay.org/search.php',
   // TODO: Replace with actual search endpoint/path provided by user
   searchPath: '',
 };
@@ -50,16 +50,19 @@ function parseSearchResults(_html: string, _query: string): ProviderSearchResult
 
 /**
  * Extracts magnet link from a detail/download page.
- * TODO: User will provide the logic for extracting the magnet URI
+ * Finds the first magnet link in the HTML using regex.
  */
-function extractMagnetFromPage(_html: string): string | null {
-  // TODO: Implement extraction logic based on user-provided selectors/patterns
-  // Example approaches:
-  // - Find <a href="magnet:...">
-  // - Find onclick handler with magnet
-  // - Find data attribute with magnet
+function extractMagnetFromPage(html: string): string | null {
+  // Match magnet links - they start with "magnet:?" and continue until whitespace or quote
+  const magnetRegex = /magnet:\?[^"'\s<>]+/i;
+  const match = html.match(magnetRegex);
 
-  logger.warn('extractMagnetFromPage not yet implemented - waiting for user-provided logic');
+  if (match) {
+    logger.debug({ magnet: match[0].substring(0, 50) + '...' }, 'Found magnet link');
+    return match[0];
+  }
+
+  logger.warn('No magnet link found in page');
   return null;
 }
 
