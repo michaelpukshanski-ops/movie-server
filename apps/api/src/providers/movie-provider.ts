@@ -3,8 +3,8 @@ import type { SourceProvider } from './types.js';
 import { logger } from '../logger.js';
 
 /**
- * Mock movie data representing , public domain content.
- * 
+ * Mock movie data representing legal, public domain content.
+ *
  * TODO: Wire this to a real provider like Internet Archive or
  * Public Domain Torrents. The current implementation uses in-memory
  * mock data for demonstration purposes.
@@ -83,8 +83,8 @@ const MOCK_MOVIES: Array<{
 
 /**
  * MovieProvider - A source provider for public domain movies.
- * 
- * This provider only returns content that is ly in the public domain.
+ *
+ * This provider only returns content that is legally in the public domain.
  * All magnet URIs use only allowlisted trackers.
  */
 export class MovieProvider implements SourceProvider {
@@ -162,4 +162,3 @@ export class MovieProvider implements SourceProvider {
     };
   }
 }
-
