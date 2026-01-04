@@ -3,15 +3,16 @@ import type { SourceProvider } from './types.js';
 import { logger } from '../logger.js';
 
 /**
- * Configuration for the movie source.
- * TODO: User will provide the base URL
+ * Validates that a string is a valid HTTP/HTTPS URL.
  */
-const SOURCE_CONFIG = {
-  // TODO: Replace with actual source URL provided by user
-  baseUrl: 'https://thepiratebay.org/search.php',
-  // TODO: Replace with actual search endpoint/path provided by user
-  searchPath: '',
-};
+function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Fetches HTML content from a URL.
@@ -34,22 +35,7 @@ async function fetchPage(url: string): Promise<string> {
 }
 
 /**
- * Parses search results from HTML.
- * TODO: User will provide the parsing logic for extracting results from the page
- */
-function parseSearchResults(_html: string, _query: string): ProviderSearchResult[] {
-  // TODO: Implement parsing logic based on user-provided selectors/patterns
-  // Example structure:
-  // - Find all result elements (e.g., table rows, divs with class)
-  // - Extract: id, title, year, quality, sizeBytes, seeds, peers
-  // - Return array of ProviderSearchResult
-
-  logger.warn('parseSearchResults not yet implemented - waiting for user-provided logic');
-  return [];
-}
-
-/**
- * Extracts magnet link from a detail/download page.
+ * Extracts magnet link from HTML.
  * Finds the first magnet link in the HTML using regex.
  */
 function extractMagnetFromPage(html: string): string | null {
@@ -67,89 +53,85 @@ function extractMagnetFromPage(html: string): string | null {
 }
 
 /**
- * Builds the search URL from a query.
- * TODO: User will provide the URL structure
+ * Extracts title from magnet's dn (display name) parameter.
  */
-function buildSearchUrl(query: string): string {
-  // TODO: Implement based on user-provided URL pattern
-  const encodedQuery = encodeURIComponent(query);
-  return `${SOURCE_CONFIG.baseUrl}${SOURCE_CONFIG.searchPath}?q=${encodedQuery}`;
-}
-
-/**
- * Builds the detail/download page URL from a result ID.
- * TODO: User will provide the URL structure
- */
-function buildDetailUrl(_resultId: string): string {
-  // TODO: Implement based on user-provided URL pattern
-  return `${SOURCE_CONFIG.baseUrl}/details/${_resultId}`;
+function extractTitleFromMagnet(magnet: string, fallback: string): string {
+  const dnMatch = magnet.match(/dn=([^&]+)/);
+  if (dnMatch) {
+    return decodeURIComponent(dnMatch[1].replace(/\+/g, ' '));
+  }
+  return fallback;
 }
 
 /**
  * MovieProvider - A source provider for movies.
  *
- * This provider fetches content from a configured source URL,
- * scrapes the search results, and extracts magnet links.
+ * User provides a URL, we fetch it and extract the first magnet link.
+ * The query IS the URL to scrape.
  */
 export class MovieProvider implements SourceProvider {
   readonly name = 'movie';
   readonly displayName = 'Movies';
 
-  // TODO: User will provide the allowed domains for this source
-  readonly allowedDomains = [
-    // TODO: Add source domain here
-  ] as const;
+  // Allow any domain since user provides the URL
+  readonly allowedDomains = [] as const;
 
-  // Only allow these tracker domains in magnets
-  readonly allowedTrackers = [
-    'tracker.opentrackr.org',
-    'tracker.openbittorrent.com',
-    'open.stealth.si',
-    'bt1.archive.org',
-    'bt2.archive.org',
-  ] as const;
+  // Allow any trackers in magnets (no filtering)
+  readonly allowedTrackers = [] as const;
 
   async search(query: string): Promise<ProviderSearchResult[]> {
-    logger.info({ provider: this.name, query }, 'Searching for movies');
+    logger.info({ provider: this.name, query }, 'Fetching URL for magnet');
 
-    const normalizedQuery = query.toLowerCase().trim();
+    const url = query.trim();
 
-    // Check if source is configured
-    if (!SOURCE_CONFIG.baseUrl) {
-      logger.warn('MovieProvider source URL not configured');
+    // The query should be a URL - validate it
+    if (!isValidUrl(url)) {
+      logger.warn({ query }, 'Query is not a valid URL');
       return [];
     }
 
     try {
-      const searchUrl = buildSearchUrl(normalizedQuery);
-      const html = await fetchPage(searchUrl);
-      const results = parseSearchResults(html, normalizedQuery);
+      // Fetch the page
+      const html = await fetchPage(url);
 
-      return results.map(result => ({
-        ...result,
+      // Extract the first magnet link
+      const magnet = extractMagnetFromPage(html);
+
+      if (!magnet) {
+        logger.warn({ url }, 'No magnet link found on page');
+        return [];
+      }
+
+      // Extract title from magnet's dn parameter, fallback to URL
+      const title = extractTitleFromMagnet(magnet, url);
+
+      // Encode the magnet in base64 to pass as resultId
+      const resultId = Buffer.from(magnet).toString('base64');
+
+      return [{
+        id: resultId,
+        title,
+        sizeBytes: 0,
+        seeds: 0,
+        peers: 0,
         provider: this.name,
-      }));
+      }];
     } catch (error) {
-      logger.error({ error, query }, 'Failed to search movies');
+      logger.error({ error, query }, 'Failed to fetch URL');
       throw error;
     }
   }
 
   async getMagnet(resultId: string): Promise<string> {
-    logger.info({ provider: this.name, resultId }, 'Getting magnet for result');
+    logger.info({ provider: this.name, resultId: resultId.substring(0, 20) + '...' }, 'Getting magnet for result');
 
-    // Check if source is configured
-    if (!SOURCE_CONFIG.baseUrl) {
-      throw new Error('MovieProvider source URL not configured');
-    }
-
+    // The resultId is the magnet URI encoded in base64
+    // (we encoded it in parseSearchResults to pass it through the confirm flow)
     try {
-      const detailUrl = buildDetailUrl(resultId);
-      const html = await fetchPage(detailUrl);
-      const magnet = extractMagnetFromPage(html);
+      const magnet = Buffer.from(resultId, 'base64').toString('utf-8');
 
-      if (!magnet) {
-        throw new Error(`Could not extract magnet link for: ${resultId}`);
+      if (!magnet.startsWith('magnet:?')) {
+        throw new Error('Invalid magnet URI in resultId');
       }
 
       return magnet;

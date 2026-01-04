@@ -77,6 +77,17 @@ export function validateMagnetUri(
       };
     }
 
+    // If allowedTrackers is empty, skip tracker validation (allow all)
+    if (allowedTrackers.length === 0) {
+      return {
+        valid: true,
+        magnetUri,
+        infoHash: parsed.infoHash,
+        trackers: parsed.trackers,
+        invalidTrackers: [],
+      };
+    }
+
     const validTrackers: string[] = [];
     const invalidTrackers: string[] = [];
 
