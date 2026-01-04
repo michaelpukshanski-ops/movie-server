@@ -3,101 +3,100 @@ import type { SourceProvider } from './types.js';
 import { logger } from '../logger.js';
 
 /**
- * Mock movie data representing legal, public domain content.
- *
- * TODO: Wire this to a real provider like Internet Archive or
- * Public Domain Torrents. The current implementation uses in-memory
- * mock data for demonstration purposes.
+ * Configuration for the movie source.
+ * TODO: User will provide the base URL
  */
-const MOCK_MOVIES: Array<{
-  id: string;
-  title: string;
-  year: number;
-  quality: string;
-  sizeBytes: number;
-  seeds: number;
-  peers: number;
-  magnetUri: string;
-}> = [
-  {
-    id: 'night-of-living-dead-1968',
-    title: 'Night of the Living Dead',
-    year: 1968,
-    quality: '720p',
-    sizeBytes: 1_500_000_000,
-    seeds: 150,
-    peers: 45,
-    magnetUri: 'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Night+of+the+Living+Dead+1968&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://tracker.openbittorrent.com:6969/announce',
-  },
-  {
-    id: 'nosferatu-1922',
-    title: 'Nosferatu',
-    year: 1922,
-    quality: '1080p',
-    sizeBytes: 2_200_000_000,
-    seeds: 89,
-    peers: 23,
-    magnetUri: 'magnet:?xt=urn:btih:abcdef0123456789abcdef0123456789abcdef01&dn=Nosferatu+1922&tr=udp://tracker.opentrackr.org:1337/announce',
-  },
-  {
-    id: 'the-general-1926',
-    title: 'The General',
-    year: 1926,
-    quality: '720p',
-    sizeBytes: 1_800_000_000,
-    seeds: 67,
-    peers: 18,
-    magnetUri: 'magnet:?xt=urn:btih:fedcba9876543210fedcba9876543210fedcba98&dn=The+General+1926&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce',
-  },
-  {
-    id: 'metropolis-1927',
-    title: 'Metropolis',
-    year: 1927,
-    quality: '1080p',
-    sizeBytes: 3_500_000_000,
-    seeds: 234,
-    peers: 78,
-    magnetUri: 'magnet:?xt=urn:btih:1234567890abcdef1234567890abcdef12345678&dn=Metropolis+1927&tr=udp://tracker.opentrackr.org:1337/announce',
-  },
-  {
-    id: 'his-girl-friday-1940',
-    title: 'His Girl Friday',
-    year: 1940,
-    quality: '720p',
-    sizeBytes: 1_200_000_000,
-    seeds: 45,
-    peers: 12,
-    magnetUri: 'magnet:?xt=urn:btih:9876543210fedcba9876543210fedcba98765432&dn=His+Girl+Friday+1940&tr=udp://tracker.openbittorrent.com:6969/announce',
-  },
-  {
-    id: 'charade-1963',
-    title: 'Charade',
-    year: 1963,
-    quality: '1080p',
-    sizeBytes: 2_800_000_000,
-    seeds: 112,
-    peers: 34,
-    magnetUri: 'magnet:?xt=urn:btih:abcd1234efgh5678ijkl9012mnop3456qrst7890&dn=Charade+1963&tr=udp://tracker.opentrackr.org:1337/announce',
-  },
-];
+const SOURCE_CONFIG = {
+  // TODO: Replace with actual source URL provided by user
+  baseUrl: '',
+  // TODO: Replace with actual search endpoint/path provided by user
+  searchPath: '',
+};
 
 /**
- * MovieProvider - A source provider for public domain movies.
+ * Fetches HTML content from a URL.
+ */
+async function fetchPage(url: string): Promise<string> {
+  logger.debug({ url }, 'Fetching page');
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+  }
+
+  return response.text();
+}
+
+/**
+ * Parses search results from HTML.
+ * TODO: User will provide the parsing logic for extracting results from the page
+ */
+function parseSearchResults(_html: string, _query: string): ProviderSearchResult[] {
+  // TODO: Implement parsing logic based on user-provided selectors/patterns
+  // Example structure:
+  // - Find all result elements (e.g., table rows, divs with class)
+  // - Extract: id, title, year, quality, sizeBytes, seeds, peers
+  // - Return array of ProviderSearchResult
+
+  logger.warn('parseSearchResults not yet implemented - waiting for user-provided logic');
+  return [];
+}
+
+/**
+ * Extracts magnet link from a detail/download page.
+ * TODO: User will provide the logic for extracting the magnet URI
+ */
+function extractMagnetFromPage(_html: string): string | null {
+  // TODO: Implement extraction logic based on user-provided selectors/patterns
+  // Example approaches:
+  // - Find <a href="magnet:...">
+  // - Find onclick handler with magnet
+  // - Find data attribute with magnet
+
+  logger.warn('extractMagnetFromPage not yet implemented - waiting for user-provided logic');
+  return null;
+}
+
+/**
+ * Builds the search URL from a query.
+ * TODO: User will provide the URL structure
+ */
+function buildSearchUrl(query: string): string {
+  // TODO: Implement based on user-provided URL pattern
+  const encodedQuery = encodeURIComponent(query);
+  return `${SOURCE_CONFIG.baseUrl}${SOURCE_CONFIG.searchPath}?q=${encodedQuery}`;
+}
+
+/**
+ * Builds the detail/download page URL from a result ID.
+ * TODO: User will provide the URL structure
+ */
+function buildDetailUrl(_resultId: string): string {
+  // TODO: Implement based on user-provided URL pattern
+  return `${SOURCE_CONFIG.baseUrl}/details/${_resultId}`;
+}
+
+/**
+ * MovieProvider - A source provider for movies.
  *
- * This provider only returns content that is legally in the public domain.
- * All magnet URIs use only allowlisted trackers.
+ * This provider fetches content from a configured source URL,
+ * scrapes the search results, and extracts magnet links.
  */
 export class MovieProvider implements SourceProvider {
   readonly name = 'movie';
-  readonly displayName = 'Public Domain Movies';
-  
-  // Only allow fetching from these domains
+  readonly displayName = 'Movies';
+
+  // TODO: User will provide the allowed domains for this source
   readonly allowedDomains = [
-    'archive.org',
-    'www.archive.org',
-    'publicdomaintorrents.info',
+    // TODO: Add source domain here
   ] as const;
-  
+
   // Only allow these tracker domains in magnets
   readonly allowedTrackers = [
     'tracker.opentrackr.org',
@@ -109,56 +108,58 @@ export class MovieProvider implements SourceProvider {
 
   async search(query: string): Promise<ProviderSearchResult[]> {
     logger.info({ provider: this.name, query }, 'Searching for movies');
-    
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    // TODO: Replace with actual API call to source
-    // For now, filter mock data
-    const results = MOCK_MOVIES.filter(movie =>
-      movie.title.toLowerCase().includes(normalizedQuery) ||
-      movie.year.toString().includes(normalizedQuery)
-    );
 
-    return results.map(movie => ({
-      id: movie.id,
-      title: movie.title,
-      sizeBytes: movie.sizeBytes,
-      seeds: movie.seeds,
-      peers: movie.peers,
-      provider: this.name,
-      year: movie.year,
-      quality: movie.quality,
-    }));
+    const normalizedQuery = query.toLowerCase().trim();
+
+    // Check if source is configured
+    if (!SOURCE_CONFIG.baseUrl) {
+      logger.warn('MovieProvider source URL not configured');
+      return [];
+    }
+
+    try {
+      const searchUrl = buildSearchUrl(normalizedQuery);
+      const html = await fetchPage(searchUrl);
+      const results = parseSearchResults(html, normalizedQuery);
+
+      return results.map(result => ({
+        ...result,
+        provider: this.name,
+      }));
+    } catch (error) {
+      logger.error({ error, query }, 'Failed to search movies');
+      throw error;
+    }
   }
 
   async getMagnet(resultId: string): Promise<string> {
     logger.info({ provider: this.name, resultId }, 'Getting magnet for result');
-    
-    // TODO: Replace with actual API call to source
-    const movie = MOCK_MOVIES.find(m => m.id === resultId);
-    
-    if (!movie) {
-      throw new Error(`Movie not found: ${resultId}`);
+
+    // Check if source is configured
+    if (!SOURCE_CONFIG.baseUrl) {
+      throw new Error('MovieProvider source URL not configured');
     }
 
-    return movie.magnetUri;
+    try {
+      const detailUrl = buildDetailUrl(resultId);
+      const html = await fetchPage(detailUrl);
+      const magnet = extractMagnetFromPage(html);
+
+      if (!magnet) {
+        throw new Error(`Could not extract magnet link for: ${resultId}`);
+      }
+
+      return magnet;
+    } catch (error) {
+      logger.error({ error, resultId }, 'Failed to get magnet');
+      throw error;
+    }
   }
 
   async getDetails(resultId: string): Promise<Record<string, unknown>> {
-    const movie = MOCK_MOVIES.find(m => m.id === resultId);
-    
-    if (!movie) {
-      throw new Error(`Movie not found: ${resultId}`);
-    }
-
+    // TODO: Implement if the source provides additional details
     return {
-      id: movie.id,
-      title: movie.title,
-      year: movie.year,
-      quality: movie.quality,
-      sizeBytes: movie.sizeBytes,
-      seeds: movie.seeds,
-      peers: movie.peers,
+      id: resultId,
     };
   }
 }
