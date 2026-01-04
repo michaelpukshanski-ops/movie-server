@@ -9,6 +9,8 @@ A production-ready home server for managing torrent-based downloads with a web U
 - **qBittorrent Integration** - Uses qBittorrent-nox as the torrent engine
 - **File Library** - Browse and download completed files
 - **File Upload** - Manually upload files to your library
+- **Plex Integration** - Automatically refresh Plex libraries on download completion
+- **Push Notifications** - Get notified via ntfy when downloads complete or fail
 - **Authentication** - Single-user login with secure sessions
 - **Audit Logging** - Track all user actions
 - **HTTPS Ready** - Caddy reverse proxy with automatic Let's Encrypt
@@ -108,6 +110,40 @@ Access the Web UI at http://localhost:8080 and configure:
 
 Set `QBITTORRENT_ENABLED=false` in `.env` to run in UI-only mode.
 The UI will work but downloads won't actually start.
+
+## Plex Integration
+
+When a download completes, Movie Server can automatically trigger a Plex library scan.
+
+### Setup
+
+1. Get your Plex token: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+
+2. Add to `.env`:
+```env
+PLEX_ENABLED=true
+PLEX_HOST=http://localhost:32400
+PLEX_TOKEN=your-plex-token
+```
+
+The server will scan all movie and TV show libraries when a download completes.
+
+## Push Notifications (ntfy)
+
+Get push notifications on your phone when downloads complete or fail using [ntfy](https://ntfy.sh).
+
+### Setup
+
+1. Install the ntfy app on your phone (iOS/Android)
+2. Subscribe to a unique topic (e.g., `movie-server-abc123`)
+3. Add to `.env`:
+```env
+NTFY_ENABLED=true
+NTFY_SERVER_URL=https://ntfy.sh
+NTFY_TOPIC=movie-server-abc123
+```
+
+For private topics, add `NTFY_ACCESS_TOKEN`.
 
 ## Production Deployment
 

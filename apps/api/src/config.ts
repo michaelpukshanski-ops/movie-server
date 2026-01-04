@@ -67,9 +67,24 @@ export const config = {
   
   // Frontend URL (for CORS)
   frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:3000'),
-  
+
   // Logging
   logLevel: optionalEnv('LOG_LEVEL', 'info'),
+
+  // Plex integration
+  plex: {
+    enabled: optionalEnvBoolean('PLEX_ENABLED', false),
+    host: optionalEnv('PLEX_HOST', 'http://localhost:32400'),
+    token: optionalEnv('PLEX_TOKEN', ''),
+  },
+
+  // ntfy push notifications
+  ntfy: {
+    enabled: optionalEnvBoolean('NTFY_ENABLED', false),
+    serverUrl: optionalEnv('NTFY_SERVER_URL', 'https://ntfy.sh'),
+    topic: optionalEnv('NTFY_TOPIC', ''),
+    accessToken: optionalEnv('NTFY_ACCESS_TOKEN', ''),
+  },
 } as const;
 
 export type Config = typeof config;

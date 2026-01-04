@@ -2,6 +2,8 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { qbittorrentService } from './qbittorrent.service.js';
 import { wsService } from './websocket.service.js';
+import { plexService } from './plex.service.js';
+import { ntfyService } from './ntfy.service.js';
 import {
   getActiveDownloads,
   getDownloadByQbHash,
@@ -123,11 +125,27 @@ async function pollQBittorrent(): Promise<void> {
               }
             }
           }
+
+          // Trigger Plex library scan
+          plexService.scanAllLibraries().catch((error) => {
+            logger.error({ error }, 'Failed to trigger Plex library scan');
+          });
+
+          // Send push notification
+          ntfyService.notifyDownloadComplete(download.name, torrent.size).catch((error) => {
+            logger.error({ error }, 'Failed to send download complete notification');
+          });
         }
 
         // Handle failure
         if (newStatus === 'FAILED') {
-          wsService.sendDownloadFailed(download.id, 'Download failed in qBittorrent');
+          const errorMessage = 'Download failed in qBittorrent';
+          wsService.sendDownloadFailed(download.id, errorMessage);
+
+          // Send push notification for failure
+          ntfyService.notifyDownloadFailed(download.name, errorMessage).catch((error) => {
+            logger.error({ error }, 'Failed to send download failed notification');
+          });
         }
       }
     }

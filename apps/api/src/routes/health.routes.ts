@@ -1,6 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { qbittorrentService } from '../services/qbittorrent.service.js';
 import { wsService } from '../services/websocket.service.js';
+import { plexService } from '../services/plex.service.js';
+import { ntfyService } from '../services/ntfy.service.js';
 import { db } from '../db/index.js';
 
 export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
@@ -14,6 +16,12 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
       dbHealthy = false;
     }
 
+    // Check Plex and ntfy connectivity
+    const [plexHealth, ntfyHealth] = await Promise.all([
+      plexService.healthCheck(),
+      ntfyService.healthCheck(),
+    ]);
+
     const status = {
       status: dbHealthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
@@ -25,6 +33,15 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
         },
         websocket: {
           clients: wsService.getClientCount(),
+        },
+        plex: {
+          enabled: plexService.isEnabled(),
+          connected: plexHealth.connected,
+          serverName: plexHealth.serverName,
+        },
+        ntfy: {
+          enabled: ntfyService.isEnabled(),
+          connected: ntfyHealth.connected,
         },
       },
     };
