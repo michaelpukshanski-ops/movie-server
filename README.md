@@ -140,7 +140,7 @@ Get push notifications on your phone when downloads complete or fail using [ntfy
 ```env
 NTFY_ENABLED=true
 NTFY_SERVER_URL=https://ntfy.sh
-NTFY_TOPIC=movie-server-abc123
+NTFY_TOPIC=movie-server-michael
 ```
 
 For private topics, add `NTFY_ACCESS_TOKEN`.
