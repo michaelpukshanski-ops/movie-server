@@ -1,0 +1,58 @@
+# Caddyfile for Movie Server
+# Replace your-domain.com with your actual domain
+
+your-domain.com {
+    # Enable automatic HTTPS with Let's Encrypt
+    # Caddy will automatically obtain and renew certificates
+
+    # API backend
+    handle /api/* {
+        reverse_proxy localhost:3001
+    }
+
+    # File downloads
+    handle /files/* {
+        reverse_proxy localhost:3001
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy localhost:3001
+    }
+
+    # WebSocket
+    handle /ws {
+        reverse_proxy localhost:3001
+    }
+
+    # Frontend (Next.js)
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/movie-server.log
+        format json
+    }
+}
+
+# Optional: Redirect www to non-www
+www.your-domain.com {
+    redir https://your-domain.com{uri} permanent
+}
+

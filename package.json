@@ -1,0 +1,29 @@
+{
+  "name": "movie-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Home server for managing torrent-based downloads with web UI",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @movie-server/api\" \"npm run dev -w @movie-server/web\"",
+    "build": "npm run build -w @movie-server/shared && npm run build -w @movie-server/api && npm run build -w @movie-server/web",
+    "start": "concurrently -n api,web \"npm run start -w @movie-server/api\" \"npm run start -w @movie-server/web\"",
+    "test": "npm run test -w @movie-server/api",
+    "lint": "eslint . --ext .ts,.tsx",
+    "db:init": "npm run db:init -w @movie-server/api",
+    "clean": "rm -rf apps/*/dist apps/*/.next packages/*/dist node_modules/.cache"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
