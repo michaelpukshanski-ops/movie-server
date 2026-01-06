@@ -1,9 +1,9 @@
 // Types
-export * from './types.js';
+export * from './types';
 
 // Schemas
-export * from './schemas.js';
+export * from './schemas';
 
 // Constants
-export * from './constants.js';
+export * from './constants';
 

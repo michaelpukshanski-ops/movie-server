@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DOWNLOAD_STATUS } from './types.js';
+import { DOWNLOAD_STATUS } from './types';
 
 // Auth schemas
 export const loginSchema = z.object({
