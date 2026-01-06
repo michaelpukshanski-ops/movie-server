@@ -3,148 +3,201 @@ import type { SourceProvider } from './types.js';
 import { logger } from '../logger.js';
 
 /**
- * Validates that a string is a valid HTTP/HTTPS URL.
+ * Internet Archive API response types
  */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
+interface ArchiveSearchResponse {
+  response: {
+    numFound: number;
+    docs: ArchiveDoc[];
+  };
+}
+
+interface ArchiveDoc {
+  identifier: string;
+  title?: string;
+  year?: number;
+  description?: string | string[];
+  mediatype?: string;
+  item_size?: number;
+}
+
+interface ArchiveMetadataResponse {
+  files?: ArchiveFile[];
+  metadata?: {
+    title?: string;
+    year?: string;
+    description?: string | string[];
+  };
+}
+
+interface ArchiveFile {
+  name: string;
+  format?: string;
+  size?: string;
 }
 
 /**
- * Fetches HTML content from a URL.
+ * Searches Internet Archive for movies/video content.
  */
-async function fetchPage(url: string): Promise<string> {
-  logger.debug({ url }, 'Fetching page');
+async function searchArchive(query: string): Promise<ArchiveDoc[]> {
+  // Search for video content on archive.org
+  const searchUrl = new URL('https://archive.org/advancedsearch.php');
+  searchUrl.searchParams.set('q', `${query} AND mediatype:(movies)`);
+  searchUrl.searchParams.set('fl[]', 'identifier,title,year,description,mediatype,item_size');
+  searchUrl.searchParams.set('rows', '20');
+  searchUrl.searchParams.set('page', '1');
+  searchUrl.searchParams.set('output', 'json');
 
-  const response = await fetch(url, {
+  logger.debug({ url: searchUrl.toString() }, 'Searching Internet Archive');
+
+  const response = await fetch(searchUrl.toString(), {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'User-Agent': 'MovieServer/1.0',
+      'Accept': 'application/json',
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+    throw new Error(`Archive search failed: ${response.status} ${response.statusText}`);
   }
 
-  return response.text();
+  const data = await response.json() as ArchiveSearchResponse;
+  return data.response.docs;
 }
 
 /**
- * Extracts magnet link from HTML.
- * Finds the first magnet link in the HTML using regex.
+ * Gets the torrent download URL for an archive.org item.
+ * Archive.org provides torrents for most items at /{identifier}/{identifier}_archive.torrent
  */
-function extractMagnetFromPage(html: string): string | null {
-  // Match magnet links - they start with "magnet:?" and continue until whitespace or quote
-  const magnetRegex = /magnet:\?[^"'\s<>]+/i;
-  const match = html.match(magnetRegex);
-
-  if (match) {
-    logger.debug({ magnet: match[0].substring(0, 50) + '...' }, 'Found magnet link');
-    return match[0];
-  }
-
-  logger.warn('No magnet link found in page');
-  return null;
+function getArchiveTorrentUrl(identifier: string): string {
+  return `https://archive.org/download/${identifier}/${identifier}_archive.torrent`;
 }
 
 /**
- * Extracts title from magnet's dn (display name) parameter.
+ * Fetches metadata for an archive.org item to get file details.
  */
-function extractTitleFromMagnet(magnet: string, fallback: string): string {
-  const dnMatch = magnet.match(/dn=([^&]+)/);
-  if (dnMatch && dnMatch[1]) {
-    return decodeURIComponent(dnMatch[1].replace(/\+/g, ' '));
+async function getArchiveMetadata(identifier: string): Promise<ArchiveMetadataResponse> {
+  const metadataUrl = `https://archive.org/metadata/${identifier}`;
+
+  const response = await fetch(metadataUrl, {
+    headers: {
+      'User-Agent': 'MovieServer/1.0',
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch metadata: ${response.status}`);
   }
-  return fallback;
+
+  return response.json() as Promise<ArchiveMetadataResponse>;
 }
 
 /**
- * MovieProvider - A source provider for movies.
+ * MovieProvider - A source provider for movies from Internet Archive.
  *
- * User provides a URL, we fetch it and extract the first magnet link.
- * The query IS the URL to scrape.
+ * Searches archive.org for public domain movies and provides torrent downloads.
  */
 export class MovieProvider implements SourceProvider {
   readonly name = 'movie';
-  readonly displayName = 'Movies';
+  readonly displayName = 'Internet Archive Movies';
 
-  // Allow any domain since user provides the URL
-  readonly allowedDomains = [] as const;
-
-  // Allow any trackers in magnets (no filtering)
-  readonly allowedTrackers = [] as const;
+  readonly allowedDomains = ['archive.org'] as const;
+  readonly allowedTrackers = ['bt1.archive.org', 'bt2.archive.org'] as const;
 
   async search(query: string): Promise<ProviderSearchResult[]> {
-    logger.info({ provider: this.name, query }, 'Fetching URL for magnet');
+    logger.info({ provider: this.name, query }, 'Searching for movies');
 
-    const url = query.trim();
-
-    // The query should be a URL - validate it
-    if (!isValidUrl(url)) {
-      logger.warn({ query }, 'Query is not a valid URL');
+    const searchQuery = query.trim();
+    if (!searchQuery) {
       return [];
     }
 
     try {
-      // Fetch the page
-      const html = await fetchPage(url);
+      const docs = await searchArchive(searchQuery);
 
-      // Extract the first magnet link
-      const magnet = extractMagnetFromPage(html);
+      const results: ProviderSearchResult[] = docs.map((doc) => {
+        // Use identifier as the result ID - we'll use it to get the torrent
+        const resultId = doc.identifier;
 
-      if (!magnet) {
-        logger.warn({ url }, 'No magnet link found on page');
-        return [];
-      }
+        // Get title, fallback to identifier
+        const title = doc.title || doc.identifier;
 
-      // Extract title from magnet's dn parameter, fallback to URL
-      const title = extractTitleFromMagnet(magnet, url);
+        // Get year if available
+        const year = doc.year;
 
-      // Encode the magnet in base64 to pass as resultId
-      const resultId = Buffer.from(magnet).toString('base64');
+        // Get size if available (item_size is in bytes)
+        const sizeBytes = doc.item_size || null;
 
-      return [{
-        id: resultId,
-        title,
-        sizeBytes: 0,
-        seeds: 0,
-        peers: 0,
-        provider: this.name,
-      }];
+        return {
+          id: resultId,
+          title,
+          sizeBytes,
+          seeds: null, // Archive.org doesn't provide seed counts
+          peers: null,
+          provider: this.name,
+          year,
+        };
+      });
+
+      logger.info({ provider: this.name, resultCount: results.length }, 'Search completed');
+      return results;
     } catch (error) {
-      logger.error({ error, query }, 'Failed to fetch URL');
+      logger.error({ error, query }, 'Search failed');
       throw error;
     }
   }
 
   async getMagnet(resultId: string): Promise<string> {
-    logger.info({ provider: this.name, resultId: resultId.substring(0, 20) + '...' }, 'Getting magnet for result');
+    logger.info({ provider: this.name, resultId }, 'Getting magnet for result');
 
-    // The resultId is the magnet URI encoded in base64
-    // (we encoded it in parseSearchResults to pass it through the confirm flow)
+    // The resultId is the archive.org identifier
+    // We need to fetch the torrent file and convert to magnet, or use archive.org's magnet format
     try {
-      const magnet = Buffer.from(resultId, 'base64').toString('utf-8');
+      // Archive.org provides a standard magnet link format for items
+      // The info hash can be obtained from the torrent, but archive.org also supports
+      // direct torrent downloads. For simplicity, we'll construct a magnet with the torrent URL.
 
-      if (!magnet.startsWith('magnet:?')) {
-        throw new Error('Invalid magnet URI in resultId');
+      // First, get metadata to find the torrent file
+      const metadata = await getArchiveMetadata(resultId);
+
+      // Find the torrent file in the files list
+      const torrentFile = metadata.files?.find(f => f.name.endsWith('_archive.torrent'));
+
+      if (!torrentFile) {
+        // Fallback: use the standard torrent URL pattern
+        const torrentUrl = getArchiveTorrentUrl(resultId);
+        logger.info({ torrentUrl }, 'Using standard torrent URL');
+
+        // Return a "magnet" that's actually the torrent URL
+        // The download service will need to handle this
+        return `torrent:${torrentUrl}`;
       }
 
-      return magnet;
+      const torrentUrl = `https://archive.org/download/${resultId}/${torrentFile.name}`;
+      logger.info({ torrentUrl }, 'Found torrent file');
+
+      // Return torrent URL prefixed with "torrent:" so download service knows to fetch it
+      return `torrent:${torrentUrl}`;
     } catch (error) {
-      logger.error({ error, resultId }, 'Failed to get magnet');
+      logger.error({ error, resultId }, 'Failed to get magnet/torrent');
       throw error;
     }
   }
 
   async getDetails(resultId: string): Promise<Record<string, unknown>> {
-    // TODO: Implement if the source provides additional details
-    return {
-      id: resultId,
-    };
+    try {
+      const metadata = await getArchiveMetadata(resultId);
+      return {
+        id: resultId,
+        title: metadata.metadata?.title,
+        year: metadata.metadata?.year,
+        description: metadata.metadata?.description,
+        archiveUrl: `https://archive.org/details/${resultId}`,
+      };
+    } catch (error) {
+      logger.error({ error, resultId }, 'Failed to get details');
+      return { id: resultId };
+    }
   }
 }

@@ -97,14 +97,14 @@ class QBittorrentService {
     }
   }
 
-  async addMagnet(magnetUri: string, savePath?: string): Promise<string | null> {
+  async addMagnet(magnetOrUrl: string, savePath?: string): Promise<string | null> {
     if (!this.connected) {
       await this.login();
     }
 
     try {
       const formData = new URLSearchParams();
-      formData.append('urls', magnetUri);
+      formData.append('urls', magnetOrUrl);
       if (savePath) {
         formData.append('savepath', savePath);
       }
@@ -116,11 +116,33 @@ class QBittorrentService {
       });
 
       if (response.ok) {
-        // Extract hash from magnet URI
-        const match = magnetUri.match(/urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/i);
-        const hash = match?.[1]?.toLowerCase() ?? null;
-        logger.info({ hash }, 'Torrent added to qBittorrent');
-        return hash;
+        // For magnet links, extract hash directly
+        if (magnetOrUrl.startsWith('magnet:')) {
+          const match = magnetOrUrl.match(/urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/i);
+          const hash = match?.[1]?.toLowerCase() ?? null;
+          logger.info({ hash }, 'Torrent added to qBittorrent from magnet');
+          return hash;
+        }
+
+        // For torrent URLs, we need to wait a moment and find the new torrent
+        // by checking the torrent list
+        logger.info({ url: magnetOrUrl }, 'Torrent URL added to qBittorrent, fetching hash...');
+
+        // Wait a bit for qBittorrent to fetch and add the torrent
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Get all torrents and find the most recently added one
+        const torrents = await this.getTorrents();
+        if (torrents.length > 0) {
+          // Sort by added_on descending and get the most recent
+          const sorted = torrents.sort((a, b) => (b.added_on || 0) - (a.added_on || 0));
+          const hash = sorted[0]?.hash?.toLowerCase() ?? null;
+          logger.info({ hash }, 'Found hash for added torrent');
+          return hash;
+        }
+
+        logger.warn('Could not determine hash for added torrent');
+        return null;
       }
 
       logger.error('Failed to add torrent:', await response.text());
