@@ -103,6 +103,13 @@ class QBittorrentService {
     }
 
     try {
+      // For torrent URLs, get existing hashes first so we can detect the new one
+      const existingHashes = new Set<string>();
+      if (!magnetOrUrl.startsWith('magnet:')) {
+        const existingTorrents = await this.getTorrents();
+        existingTorrents.forEach(t => existingHashes.add(t.hash.toLowerCase()));
+      }
+
       const formData = new URLSearchParams();
       formData.append('urls', magnetOrUrl);
       if (savePath) {
@@ -124,24 +131,24 @@ class QBittorrentService {
           return hash;
         }
 
-        // For torrent URLs, we need to wait a moment and find the new torrent
-        // by checking the torrent list
-        logger.info({ url: magnetOrUrl }, 'Torrent URL added to qBittorrent, fetching hash...');
+        // For torrent URLs, poll until we find the new torrent
+        logger.info({ url: magnetOrUrl }, 'Torrent URL added to qBittorrent, waiting for hash...');
 
-        // Wait a bit for qBittorrent to fetch and add the torrent
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Poll for up to 10 seconds to find the new torrent
+        for (let attempt = 0; attempt < 10; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Get all torrents and find the most recently added one
-        const torrents = await this.getTorrents();
-        if (torrents.length > 0) {
-          // Sort by added_on descending and get the most recent
-          const sorted = torrents.sort((a, b) => (b.added_on || 0) - (a.added_on || 0));
-          const hash = sorted[0]?.hash?.toLowerCase() ?? null;
-          logger.info({ hash }, 'Found hash for added torrent');
-          return hash;
+          const torrents = await this.getTorrents();
+          const newTorrent = torrents.find(t => !existingHashes.has(t.hash.toLowerCase()));
+
+          if (newTorrent) {
+            const hash = newTorrent.hash.toLowerCase();
+            logger.info({ hash, attempt }, 'Found hash for added torrent');
+            return hash;
+          }
         }
 
-        logger.warn('Could not determine hash for added torrent');
+        logger.warn('Could not determine hash for added torrent after 10 attempts');
         return null;
       }
 
