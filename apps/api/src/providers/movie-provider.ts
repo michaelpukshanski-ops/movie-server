@@ -57,7 +57,7 @@ function extractMagnetFromPage(html: string): string | null {
  */
 function extractTitleFromMagnet(magnet: string, fallback: string): string {
   const dnMatch = magnet.match(/dn=([^&]+)/);
-  if (dnMatch) {
+  if (dnMatch && dnMatch[1]) {
     return decodeURIComponent(dnMatch[1].replace(/\+/g, ' '));
   }
   return fallback;

@@ -6,7 +6,6 @@ import { plexService } from './plex.service.js';
 import { ntfyService } from './ntfy.service.js';
 import {
   getActiveDownloads,
-  getDownloadByQbHash,
   updateDownloadProgress,
   updateDownloadStatus,
   setDownloadSavePath,

@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 import type { LibraryFile, PaginatedResponse } from '@movie-server/shared';
 import { readdirSync, statSync, existsSync } from 'fs';
-import { join, basename, extname, resolve, relative } from 'path';
+import { join, basename, resolve, relative } from 'path';
 import { lookup } from 'mime-types';
 
 interface LibraryFileRow {

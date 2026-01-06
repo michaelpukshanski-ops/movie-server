@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { config } from './config.js';
 
-export const logger = pino({
+export const logger = (pino as unknown as typeof pino.default)({
   level: config.logLevel,
   transport: config.nodeEnv === 'development' 
     ? {

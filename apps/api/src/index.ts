@@ -52,7 +52,7 @@ async function main() {
 
   // WebSocket route
   fastify.get('/ws', { websocket: true }, (socket, _req) => {
-    wsService.addClient(socket);
+    wsService.addClient(socket.socket);
   });
 
   // Register API routes
