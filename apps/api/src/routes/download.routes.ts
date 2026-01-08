@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { downloadRequestSchema, downloadConfirmSchema, downloadIdParamSchema, paginationSchema } from '@movie-server/shared';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
-import { getProvider, validateMagnetUri } from '../providers/index.js';
+import { getProvider } from '../providers/index.js';
 import {
   createDownload,
   getDownloads,
@@ -90,19 +90,6 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
       // Check if this is a torrent URL (prefixed with "torrent:")
       const isTorrentUrl = magnetOrTorrent.startsWith('torrent:');
       const downloadUrl = isTorrentUrl ? magnetOrTorrent.slice(8) : magnetOrTorrent;
-
-      // Only validate magnet URIs, not torrent URLs
-      if (!isTorrentUrl) {
-        const validation = validateMagnetUri(downloadUrl, provider.allowedTrackers);
-
-        if (!validation.valid) {
-          logger.warn({ resultId, error: validation.error }, 'Magnet validation failed');
-          return reply.status(400).send({
-            success: false,
-            error: validation.error || 'Invalid magnet URI',
-          });
-        }
-      }
 
       // Get details for the name
       let name = resultId;

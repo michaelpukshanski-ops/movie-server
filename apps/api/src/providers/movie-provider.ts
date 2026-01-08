@@ -102,9 +102,6 @@ export class MovieProvider implements SourceProvider {
   readonly name = 'movie';
   readonly displayName = 'Internet Archive Movies';
 
-  readonly allowedDomains = ['archive.org'] as const;
-  readonly allowedTrackers = ['bt1.archive.org', 'bt2.archive.org'] as const;
-
   async search(query: string): Promise<ProviderSearchResult[]> {
     logger.info({ provider: this.name, query }, 'Searching for movies');
 

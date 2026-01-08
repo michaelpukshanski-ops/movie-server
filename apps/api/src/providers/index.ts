@@ -42,6 +42,6 @@ export function registerProvider(provider: SourceProvider): void {
 }
 
 // Re-export types
-export type { SourceProvider, MagnetValidationResult } from './types.js';
-export { validateMagnetUri, validateSourceUrl, parseMagnetUri } from './validation.js';
+export type { SourceProvider } from './types.js';
+export { parseMagnetUri } from './validation.js';
 

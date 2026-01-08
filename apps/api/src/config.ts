@@ -1,4 +1,4 @@
-import { DEFAULTS, ALLOWED_TRACKER_DOMAINS, ALLOWED_SOURCE_DOMAINS, ALLOWED_UPLOAD_MIME_TYPES } from '@movie-server/shared';
+import { DEFAULTS, ALLOWED_UPLOAD_MIME_TYPES } from '@movie-server/shared';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -60,11 +60,7 @@ export const config = {
   // Rate limiting
   rateLimitMax: optionalEnvNumber('RATE_LIMIT_MAX', DEFAULTS.RATE_LIMIT_MAX),
   rateLimitWindowMs: optionalEnvNumber('RATE_LIMIT_WINDOW_MS', DEFAULTS.RATE_LIMIT_WINDOW_MS),
-  
-  // Allowlists
-  allowedTrackerDomains: ALLOWED_TRACKER_DOMAINS as readonly string[],
-  allowedSourceDomains: ALLOWED_SOURCE_DOMAINS as readonly string[],
-  
+
   // Frontend URL (for CORS)
   frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:3000'),
 

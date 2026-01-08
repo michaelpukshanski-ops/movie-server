@@ -57,27 +57,3 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   'application/x-7z-compressed',
 ] as const;
 
-// Allowed tracker domains for magnet validation
-export const ALLOWED_TRACKER_DOMAINS = [
-  // Public trackers
-  'tracker.opentrackr.org',
-  'tracker.openbittorrent.com',
-  'open.stealth.si',
-  'exodus.desync.com',
-  'tracker.torrent.eu.org',
-  'tracker.tiny-vps.com',
-  // Internet Archive
-  'bt1.archive.org',
-  'bt2.archive.org',
-  // Add more tracker domains as needed
-] as const;
-
-// Allowed source domains for HTTP fetches
-export const ALLOWED_SOURCE_DOMAINS = [
-  'archive.org',
-  'www.archive.org',
-  'publicdomaintorrents.info',
-  'www.publicdomaintorrents.info',
-  // Add more source domains as needed
-] as const;
-
