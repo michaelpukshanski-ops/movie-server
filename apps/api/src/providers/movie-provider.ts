@@ -1,6 +1,7 @@
 import type { ProviderSearchResult } from '@movie-server/shared';
 import type { SourceProvider } from './types.js';
 import { logger } from '../logger.js';
+import * as cheerio from 'cheerio';
 
 /**
  * Internet Archive API response types
@@ -34,6 +35,25 @@ interface ArchiveFile {
   name: string;
   format?: string;
   size?: string;
+}
+
+/**
+ * Fetches a URL and returns a cheerio instance for HTML parsing.
+ */
+async function fetchAndParse(url: string): Promise<cheerio.CheerioAPI> {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'MovieServer/1.0',
+      'Accept': 'text/html',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+  }
+
+  const html = await response.text();
+  return cheerio.load(html);
 }
 
 /**
