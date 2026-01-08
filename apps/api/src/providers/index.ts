@@ -1,5 +1,6 @@
 import type { SourceProvider } from './types.js';
 import { MovieProvider } from './movie-provider.js';
+import { PirateBayProvider } from './piratebay-provider.js';
 import { logger } from '../logger.js';
 
 // Registry of all available providers
@@ -8,6 +9,9 @@ const providers = new Map<string, SourceProvider>();
 // Register built-in providers
 const movieProvider = new MovieProvider();
 providers.set(movieProvider.name, movieProvider);
+
+const pirateBayProvider = new PirateBayProvider();
+providers.set(pirateBayProvider.name, pirateBayProvider);
 
 /**
  * Get a provider by name
