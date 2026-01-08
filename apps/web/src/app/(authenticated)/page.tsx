@@ -9,7 +9,7 @@ import { useEffect } from 'react';
 
 export default function DashboardPage() {
   const [query, setQuery] = useState('');
-  const [provider, setProvider] = useState('movie');
+  const [provider, setProvider] = useState('piratebay');
   const [providers, setProviders] = useState<Array<{ name: string; displayName: string }>>([]);
   const [results, setResults] = useState<ProviderSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
