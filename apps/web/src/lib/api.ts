@@ -40,6 +40,14 @@ export async function login(username: string, password: string): Promise<User> {
   return response.data!.user;
 }
 
+export async function signup(username: string, password: string, confirmPassword: string): Promise<User> {
+  const response = await fetchApi<{ user: User }>('/api/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, confirmPassword }),
+  });
+  return response.data!.user;
+}
+
 export async function logout(): Promise<void> {
   await fetchApi('/api/auth/logout', { method: 'POST' });
 }

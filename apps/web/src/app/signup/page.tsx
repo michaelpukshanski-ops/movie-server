@@ -3,26 +3,37 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth-context';
+import { signup } from '@/lib/api';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await login(username, password);
+      await signup(username, password, confirmPassword);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
       setLoading(false);
     }
@@ -36,7 +47,7 @@ export default function LoginPage() {
             🎬 Movie Server
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Sign in to manage your downloads
+            Create your account
           </p>
         </div>
 
@@ -62,6 +73,10 @@ export default function LoginPage() {
               className="input"
               required
               autoComplete="username"
+              minLength={3}
+              maxLength={50}
+              pattern="^[a-zA-Z0-9_-]+$"
+              title="Username can only contain letters, numbers, underscores, and hyphens"
             />
           </div>
 
@@ -79,7 +94,27 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="input"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
+              minLength={8}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="input"
+              required
+              autoComplete="new-password"
+              minLength={8}
             />
           </div>
 
@@ -88,14 +123,14 @@ export default function LoginPage() {
             disabled={loading}
             className="btn btn-primary w-full"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-blue-600 hover:text-blue-500 dark:text-blue-400">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="text-blue-600 hover:text-blue-500 dark:text-blue-400">
+            Sign in
           </Link>
         </p>
       </div>

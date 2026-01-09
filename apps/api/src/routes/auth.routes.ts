@@ -1,12 +1,57 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { loginSchema } from '@movie-server/shared';
-import { verifyPassword, getUserById } from '../services/user.service.js';
+import { loginSchema, signupSchema } from '@movie-server/shared';
+import { verifyPassword, getUserById, getUserByUsername, createUser } from '../services/user.service.js';
 import { createSession, deleteSession, getSession } from '../services/session.service.js';
 import { logAudit } from '../services/audit.service.js';
 import { config } from '../config.js';
 import { DEFAULTS } from '@movie-server/shared';
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
+  // Signup
+  fastify.post('/api/auth/signup', async (request: FastifyRequest, reply: FastifyReply) => {
+    const parseResult = signupSchema.safeParse(request.body);
+
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0];
+      return reply.status(400).send({
+        success: false,
+        error: firstError?.message || 'Invalid signup data',
+      });
+    }
+
+    const { username, password } = parseResult.data;
+
+    // Check if username already exists
+    const existingUser = getUserByUsername(username);
+    if (existingUser) {
+      return reply.status(409).send({
+        success: false,
+        error: 'Username already taken',
+      });
+    }
+
+    // Create the user
+    const user = await createUser(username, password);
+
+    // Create session and log in automatically
+    const sessionId = createSession(user.id);
+
+    logAudit(user.id, 'SIGNUP', { username }, request.ip);
+
+    reply.setCookie('session', sessionId, {
+      httpOnly: true,
+      secure: config.cookieSecure,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: DEFAULTS.SESSION_MAX_AGE_SECONDS,
+    });
+
+    return reply.status(201).send({
+      success: true,
+      data: { user },
+    });
+  });
+
   // Login
   fastify.post('/api/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
     const parseResult = loginSchema.safeParse(request.body);

@@ -3,7 +3,8 @@ import { db } from '../db/index.js';
 import { logger } from '../logger.js';
 import type { AuditLogEntry } from '@movie-server/shared';
 
-export type AuditAction = 
+export type AuditAction =
+  | 'SIGNUP'
   | 'LOGIN'
   | 'LOGOUT'
   | 'DOWNLOAD_REQUEST'
