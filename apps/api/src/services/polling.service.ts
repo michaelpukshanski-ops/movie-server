@@ -9,7 +9,9 @@ import {
   updateDownloadProgress,
   updateDownloadStatus,
   setDownloadSavePath,
+  getDownloadUserId,
 } from './download.service.js';
+import { getUserById } from './user.service.js';
 import { addLibraryFile } from './library.service.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -130,8 +132,10 @@ async function pollQBittorrent(): Promise<void> {
             logger.error({ error }, 'Failed to trigger Plex library scan');
           });
 
-          // Send push notification
-          ntfyService.notifyDownloadComplete(download.name, torrent.size).catch((error) => {
+          // Send push notification with username
+          const userId = getDownloadUserId(download.id);
+          const user = userId ? getUserById(userId) : undefined;
+          ntfyService.notifyDownloadComplete(download.name, torrent.size, user?.username).catch((error) => {
             logger.error({ error }, 'Failed to send download complete notification');
           });
         }
@@ -141,8 +145,10 @@ async function pollQBittorrent(): Promise<void> {
           const errorMessage = 'Download failed in qBittorrent';
           wsService.sendDownloadFailed(download.id, errorMessage);
 
-          // Send push notification for failure
-          ntfyService.notifyDownloadFailed(download.name, errorMessage).catch((error) => {
+          // Send push notification for failure with username
+          const userId = getDownloadUserId(download.id);
+          const user = userId ? getUserById(userId) : undefined;
+          ntfyService.notifyDownloadFailed(download.name, errorMessage, user?.username).catch((error) => {
             logger.error({ error }, 'Failed to send download failed notification');
           });
         }

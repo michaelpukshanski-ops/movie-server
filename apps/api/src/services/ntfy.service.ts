@@ -40,13 +40,25 @@ class NtfyService {
   }
 
   /**
+   * Get the topic for a specific user (base topic + username)
+   */
+  private getTopicForUser(username?: string): string {
+    if (username) {
+      return `${this.topic}-${username}`;
+    }
+    return this.topic;
+  }
+
+  /**
    * Send a push notification
    */
-  async send(message: NtfyMessage): Promise<void> {
+  async send(message: NtfyMessage, username?: string): Promise<void> {
     if (!this.isEnabled()) {
       logger.debug('ntfy integration disabled, skipping notification');
       return;
     }
+
+    const topic = this.getTopicForUser(username);
 
     try {
       const headers: Record<string, string> = {
@@ -58,7 +70,7 @@ class NtfyService {
       }
 
       const body = {
-        topic: this.topic,
+        topic,
         title: message.title,
         message: message.message,
         priority: message.priority ?? 3,
@@ -67,7 +79,7 @@ class NtfyService {
         actions: message.actions,
       };
 
-      logger.info({ topic: this.topic, title: message.title }, 'Sending ntfy notification');
+      logger.info({ topic, title: message.title }, 'Sending ntfy notification');
 
       const response = await fetch(this.serverUrl, {
         method: 'POST',
@@ -79,7 +91,7 @@ class NtfyService {
         throw new Error(`ntfy API error: ${response.status} ${response.statusText}`);
       }
 
-      logger.info({ topic: this.topic }, 'ntfy notification sent successfully');
+      logger.info({ topic }, 'ntfy notification sent successfully');
     } catch (error) {
       logger.error({ error }, 'Failed to send ntfy notification');
       // Don't throw - we don't want to fail operations due to notification failures
@@ -89,7 +101,7 @@ class NtfyService {
   /**
    * Send download completed notification
    */
-  async notifyDownloadComplete(name: string, sizeBytes: number): Promise<void> {
+  async notifyDownloadComplete(name: string, sizeBytes: number, username?: string): Promise<void> {
     const sizeFormatted = this.formatBytes(sizeBytes);
 
     await this.send({
@@ -97,31 +109,31 @@ class NtfyService {
       message: `${name} (${sizeFormatted}) has finished downloading`,
       priority: 3,
       tags: ['white_check_mark', 'movie_camera'],
-    });
+    }, username);
   }
 
   /**
    * Send download failed notification
    */
-  async notifyDownloadFailed(name: string, error: string): Promise<void> {
+  async notifyDownloadFailed(name: string, error: string, username?: string): Promise<void> {
     await this.send({
       title: '❌ Download Failed',
       message: `${name} failed: ${error}`,
       priority: 4,
       tags: ['x', 'warning'],
-    });
+    }, username);
   }
 
   /**
    * Send download started notification
    */
-  async notifyDownloadStarted(name: string): Promise<void> {
+  async notifyDownloadStarted(name: string, username?: string): Promise<void> {
     await this.send({
       title: '⬇️ Download Started',
       message: `Started downloading: ${name}`,
       priority: 2,
       tags: ['arrow_down'],
-    });
+    }, username);
   }
 
   private formatBytes(bytes: number): string {

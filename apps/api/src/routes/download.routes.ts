@@ -7,6 +7,7 @@ import {
   createDownload,
   getDownloads,
   getDownloadById,
+  getDownloadByIdForUser,
   updateDownloadStatus,
   setDownloadMagnet,
   setDownloadQbHash,
@@ -16,13 +17,13 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 
 export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
-  // Get all downloads
+  // Get all downloads for current user
   fastify.get('/api/downloads', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = paginationSchema.safeParse(request.query);
     const { page, pageSize } = query.success ? query.data : { page: 1, pageSize: 20 };
-    
-    const downloads = getDownloads(page, pageSize);
-    
+
+    const downloads = getDownloads(request.user!.id, page, pageSize);
+
     return reply.send({ success: true, data: downloads });
   });
 
@@ -99,7 +100,7 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       // Create download record
-      const download = createDownload(name, providerName, resultId, downloadUrl);
+      const download = createDownload(request.user!.id, name, providerName, resultId, downloadUrl);
       setDownloadMagnet(download.id, downloadUrl);
       updateDownloadStatus(download.id, 'FETCHING_MAGNET');
 
@@ -137,14 +138,14 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
     }
   });
 
-  // Get single download
+  // Get single download (only if owned by current user)
   fastify.get('/api/downloads/:id', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     const params = downloadIdParamSchema.safeParse(request.params);
     if (!params.success) {
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
-    const download = getDownloadById(params.data.id);
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }

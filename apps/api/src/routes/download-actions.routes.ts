@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { downloadIdParamSchema } from '@movie-server/shared';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
-import { getDownloadById, updateDownloadStatus } from '../services/download.service.js';
+import { getDownloadByIdForUser, updateDownloadStatus } from '../services/download.service.js';
 import { qbittorrentService } from '../services/qbittorrent.service.js';
 import { wsService } from '../services/websocket.service.js';
 import { db } from '../db/index.js';
@@ -22,7 +22,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
-    const download = getDownloadById(params.data.id);
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }
@@ -43,7 +43,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
     wsService.sendDownloadStatusChange({ downloadId: download.id, status: 'PAUSED' });
     logAudit(request.user!.id, 'DOWNLOAD_PAUSE', { downloadId: download.id }, request.ip);
 
-    return reply.send({ success: true, data: { download: getDownloadById(download.id) } });
+    return reply.send({ success: true, data: { download: getDownloadByIdForUser(download.id, request.user!.id) } });
   });
 
   // Resume download
@@ -53,7 +53,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
-    const download = getDownloadById(params.data.id);
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }
@@ -74,7 +74,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
     wsService.sendDownloadStatusChange({ downloadId: download.id, status: 'DOWNLOADING' });
     logAudit(request.user!.id, 'DOWNLOAD_RESUME', { downloadId: download.id }, request.ip);
 
-    return reply.send({ success: true, data: { download: getDownloadById(download.id) } });
+    return reply.send({ success: true, data: { download: getDownloadByIdForUser(download.id, request.user!.id) } });
   });
 
   // Cancel download
@@ -84,7 +84,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
-    const download = getDownloadById(params.data.id);
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }
@@ -102,7 +102,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
     wsService.sendDownloadStatusChange({ downloadId: download.id, status: 'CANCELED' });
     logAudit(request.user!.id, 'DOWNLOAD_CANCEL', { downloadId: download.id }, request.ip);
 
-    return reply.send({ success: true, data: { download: getDownloadById(download.id) } });
+    return reply.send({ success: true, data: { download: getDownloadByIdForUser(download.id, request.user!.id) } });
   });
 
   // Get download files
@@ -112,7 +112,7 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
-    const download = getDownloadById(params.data.id);
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }

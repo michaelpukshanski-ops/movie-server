@@ -4,6 +4,7 @@ import type { Download, DownloadStatus, PaginatedResponse } from '@movie-server/
 
 interface DownloadRow {
   id: string;
+  user_id: string;
   name: string;
   status: DownloadStatus;
   progress: number;
@@ -39,6 +40,7 @@ function rowToDownload(row: DownloadRow): Download {
 }
 
 export function createDownload(
+  userId: string,
   name: string,
   sourceProvider: string,
   sourceId: string,
@@ -46,14 +48,14 @@ export function createDownload(
 ): Download {
   const id = uuidv4();
   const now = new Date().toISOString();
-  
+
   const stmt = db.prepare(`
-    INSERT INTO downloads (id, name, source_provider, source_id, magnet_uri, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO downloads (id, user_id, name, source_provider, source_id, magnet_uri, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  
-  stmt.run(id, name, sourceProvider, sourceId, magnetUri ?? null, now, now);
-  
+
+  stmt.run(id, userId, name, sourceProvider, sourceId, magnetUri ?? null, now, now);
+
   return {
     id,
     name,
@@ -76,38 +78,60 @@ export function getDownloadById(id: string): Download | undefined {
   return row ? rowToDownload(row) : undefined;
 }
 
+export function getDownloadByIdForUser(id: string, userId: string): Download | undefined {
+  const stmt = db.prepare('SELECT * FROM downloads WHERE id = ? AND user_id = ?');
+  const row = stmt.get(id, userId) as DownloadRow | undefined;
+  return row ? rowToDownload(row) : undefined;
+}
+
+export function getDownloadUserId(id: string): string | undefined {
+  const stmt = db.prepare('SELECT user_id FROM downloads WHERE id = ?');
+  const row = stmt.get(id) as { user_id: string } | undefined;
+  return row?.user_id;
+}
+
 export function getDownloadByQbHash(hash: string): Download | undefined {
   const stmt = db.prepare('SELECT * FROM downloads WHERE qbittorrent_hash = ?');
   const row = stmt.get(hash) as DownloadRow | undefined;
   return row ? rowToDownload(row) : undefined;
 }
 
+export function getDownloadByQbHashWithUserId(hash: string): { download: Download; userId: string } | undefined {
+  const stmt = db.prepare('SELECT * FROM downloads WHERE qbittorrent_hash = ?');
+  const row = stmt.get(hash) as DownloadRow | undefined;
+  if (!row) return undefined;
+  return { download: rowToDownload(row), userId: row.user_id };
+}
+
 export function getDownloads(
+  userId: string,
   page: number = 1,
   pageSize: number = 20,
   statusFilter?: DownloadStatus[]
 ): PaginatedResponse<Download> {
   const offset = (page - 1) * pageSize;
-  
-  let whereClause = '';
-  const params: (string | number)[] = [];
-  
+
+  const conditions: string[] = ['user_id = ?'];
+  const params: (string | number)[] = [userId];
+
   if (statusFilter && statusFilter.length > 0) {
-    whereClause = `WHERE status IN (${statusFilter.map(() => '?').join(', ')})`;
+    conditions.push(`status IN (${statusFilter.map(() => '?').join(', ')})`);
     params.push(...statusFilter);
   }
-  
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
   const countStmt = db.prepare(`SELECT COUNT(*) as count FROM downloads ${whereClause}`);
   const { count } = countStmt.get(...params) as { count: number };
-  
+
   const stmt = db.prepare(`
     SELECT * FROM downloads ${whereClause}
     ORDER BY created_at DESC
     LIMIT ? OFFSET ?
   `);
-  
+
   const rows = stmt.all(...params, pageSize, offset) as DownloadRow[];
-  
+
   return {
     items: rows.map(rowToDownload),
     total: count,

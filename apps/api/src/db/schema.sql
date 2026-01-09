@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 -- Downloads table
 CREATE TABLE IF NOT EXISTS downloads (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'QUEUED',
   progress REAL NOT NULL DEFAULT 0,
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS downloads (
   error_message TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_downloads_user_id ON downloads(user_id);
 CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);
 CREATE INDEX IF NOT EXISTS idx_downloads_created_at ON downloads(created_at);
 
