@@ -1,10 +1,17 @@
 import 'dotenv/config';
-import { existsSync, unlinkSync } from 'fs';
+import Database from 'better-sqlite3';
+import bcrypt from 'bcrypt';
+import { existsSync, unlinkSync, readFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config.js';
-import { initializeDatabase, closeDatabase } from './index.js';
-import { createUser } from '../services/user.service.js';
 import { logger } from '../logger.js';
 import * as readline from 'readline';
+
+const SALT_ROUNDS = 12;
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({
@@ -43,8 +50,21 @@ async function main() {
       }
     }
 
-    // Initialize database schema
-    initializeDatabase();
+    // Ensure data directory exists
+    const dbDir = dirname(config.dbPath);
+    mkdirSync(dbDir, { recursive: true });
+
+    // Create fresh database connection
+    logger.info('Initializing database...');
+    const db = new Database(config.dbPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+
+    // Load and execute schema
+    const schemaPath = join(__dirname, 'schema.sql');
+    const schema = readFileSync(schemaPath, 'utf-8');
+    db.exec(schema);
+    logger.info('Database schema created');
 
     // Create admin user
     const password = await prompt('Enter password for admin user: ');
@@ -53,13 +73,19 @@ async function main() {
       process.exit(1);
     }
 
-    await createUser('admin', password);
+    const id = uuidv4();
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    const stmt = db.prepare(
+      'INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)'
+    );
+    stmt.run(id, 'admin', passwordHash);
     logger.info('Admin user created successfully');
 
-    closeDatabase();
+    db.close();
+    logger.info('Database initialization complete');
     process.exit(0);
   } catch (error) {
-    logger.error('Database initialization failed:', error);
+    console.error('Database initialization failed:', error);
     process.exit(1);
   }
 }
