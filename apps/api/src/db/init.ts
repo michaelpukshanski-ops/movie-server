@@ -1,6 +1,8 @@
 import 'dotenv/config';
+import { existsSync, unlinkSync } from 'fs';
+import { config } from '../config.js';
 import { initializeDatabase, closeDatabase } from './index.js';
-import { createUser, getUserByUsername } from '../services/user.service.js';
+import { createUser } from '../services/user.service.js';
 import { logger } from '../logger.js';
 import * as readline from 'readline';
 
@@ -20,24 +22,39 @@ async function prompt(question: string): Promise<string> {
 
 async function main() {
   try {
+    // Check for --reset flag
+    const shouldReset = process.argv.includes('--reset');
+
+    if (shouldReset) {
+      logger.info('Resetting database...');
+
+      // Delete existing database files
+      const dbFiles = [
+        config.dbPath,
+        `${config.dbPath}-wal`,
+        `${config.dbPath}-shm`,
+      ];
+
+      for (const file of dbFiles) {
+        if (existsSync(file)) {
+          unlinkSync(file);
+          logger.info(`Deleted: ${file}`);
+        }
+      }
+    }
+
     // Initialize database schema
     initializeDatabase();
 
-    // Check if admin user exists
-    const existingUser = getUserByUsername('admin');
-    if (existingUser) {
-      logger.info('Admin user already exists');
-    } else {
-      // Create admin user
-      const password = await prompt('Enter password for admin user: ');
-      if (password.length < 8) {
-        logger.error('Password must be at least 8 characters');
-        process.exit(1);
-      }
-      
-      await createUser('admin', password);
-      logger.info('Admin user created successfully');
+    // Create admin user
+    const password = await prompt('Enter password for admin user: ');
+    if (password.length < 8) {
+      logger.error('Password must be at least 8 characters');
+      process.exit(1);
     }
+
+    await createUser('admin', password);
+    logger.info('Admin user created successfully');
 
     closeDatabase();
     process.exit(0);

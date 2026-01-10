@@ -10,6 +10,7 @@
     "test": "npm run test -w @movie-server/api",
     "lint": "eslint . --ext .ts,.tsx",
     "db:init": "npm run db:init -w @movie-server/api",
+    "db:reset": "npm run db:reset -w @movie-server/api",
     "clean": "rm -rf apps/*/dist apps/*/.next packages/*/dist node_modules/.cache"
   },
   "workspaces": [
