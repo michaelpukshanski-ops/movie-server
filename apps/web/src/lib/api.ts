@@ -1,10 +1,9 @@
-import type { 
-  Download, 
-  LibraryFile, 
-  ProviderSearchResult, 
+import type {
+  Download,
+  ProviderSearchResult,
   User,
   PaginatedResponse,
-  ApiResponse 
+  ApiResponse
 } from '@movie-server/shared';
 
 const API_BASE = '';
@@ -121,40 +120,8 @@ export async function cancelDownload(id: string): Promise<Download> {
   return response.data!.download;
 }
 
-// Library
-export async function getLibrary(
-  page = 1,
-  pageSize = 20,
-  search?: string
-): Promise<PaginatedResponse<LibraryFile>> {
-  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  if (search) params.set('q', search);
-  
-  const response = await fetchApi<PaginatedResponse<LibraryFile>>(`/api/library?${params}`);
-  return response.data!;
-}
-
-export function getFileDownloadUrl(fileId: string): string {
-  return `/files/${fileId}`;
-}
-
-// Upload
-export async function uploadFile(file: File): Promise<LibraryFile> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch('/api/upload', {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
+export async function deleteDownload(id: string): Promise<void> {
+  await fetchApi(`/api/downloads/${id}`, {
+    method: 'DELETE',
   });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.error || 'Upload failed');
-  }
-
-  return data.data.file;
 }
-

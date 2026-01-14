@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { downloadIdParamSchema } from '@movie-server/shared';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
-import { getDownloadByIdForUser, updateDownloadStatus } from '../services/download.service.js';
+import { getDownloadByIdForUser, updateDownloadStatus, deleteDownload } from '../services/download.service.js';
+import { deleteLibraryFilesByDownloadId } from '../services/library.service.js';
 import { qbittorrentService } from '../services/qbittorrent.service.js';
 import { wsService } from '../services/websocket.service.js';
 import { db } from '../db/index.js';
@@ -129,6 +130,38 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
       logger.error({ error, downloadId: download.id }, 'Failed to get torrent files');
       return reply.status(500).send({ success: false, error: 'Failed to get files' });
     }
+  });
+
+  // Delete download and associated files
+  fastify.delete('/api/downloads/:id', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const params = downloadIdParamSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid download ID' });
+    }
+
+    const download = getDownloadByIdForUser(params.data.id, request.user!.id);
+    if (!download) {
+      return reply.status(404).send({ success: false, error: 'Download not found' });
+    }
+
+    // Delete torrent from qBittorrent if still there
+    const qbHash = await getQbHash(download.id);
+    if (qbHash && qbittorrentService.isEnabled) {
+      await qbittorrentService.deleteTorrent(qbHash, true).catch((error) => {
+        logger.warn({ error, qbHash }, 'Failed to delete torrent from qBittorrent');
+      });
+    }
+
+    // Delete associated library files (and files from disk)
+    const deletedFilesCount = deleteLibraryFilesByDownloadId(download.id);
+    logger.info({ downloadId: download.id, deletedFilesCount }, 'Deleted library files for download');
+
+    // Delete the download record
+    deleteDownload(download.id);
+
+    logAudit(request.user!.id, 'DOWNLOAD_DELETE', { downloadId: download.id, deletedFilesCount }, request.ip);
+
+    return reply.send({ success: true });
   });
 }
 

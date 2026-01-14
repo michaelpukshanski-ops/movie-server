@@ -226,3 +226,28 @@ export function getLibraryFileByPath(absolutePath: string): LibraryFile | undefi
   return row ? rowToLibraryFile(row) : undefined;
 }
 
+/**
+ * Get all library files associated with a download
+ */
+export function getLibraryFilesByDownloadId(downloadId: string): LibraryFile[] {
+  const stmt = db.prepare('SELECT * FROM library_files WHERE download_id = ?');
+  const rows = stmt.all(downloadId) as LibraryFileRow[];
+  return rows.map(rowToLibraryFile);
+}
+
+/**
+ * Delete all library files associated with a download
+ */
+export function deleteLibraryFilesByDownloadId(downloadId: string): number {
+  const files = getLibraryFilesByDownloadId(downloadId);
+  let deletedCount = 0;
+
+  for (const file of files) {
+    if (deleteLibraryFile(file.id)) {
+      deletedCount++;
+    }
+  }
+
+  return deletedCount;
+}
+

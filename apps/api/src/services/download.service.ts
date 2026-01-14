@@ -199,7 +199,7 @@ export function updateDownloadName(id: string, name: string): void {
 
 export function getActiveDownloads(): Download[] {
   const stmt = db.prepare(`
-    SELECT * FROM downloads 
+    SELECT * FROM downloads
     WHERE status IN ('QUEUED', 'FETCHING_MAGNET', 'ADDING_TO_QBITTORRENT', 'DOWNLOADING', 'PAUSED')
     ORDER BY created_at ASC
   `);
@@ -207,3 +207,7 @@ export function getActiveDownloads(): Download[] {
   return rows.map(rowToDownload);
 }
 
+export function deleteDownload(id: string): void {
+  const stmt = db.prepare('DELETE FROM downloads WHERE id = ?');
+  stmt.run(id);
+}

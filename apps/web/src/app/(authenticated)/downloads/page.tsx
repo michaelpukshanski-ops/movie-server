@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Download, DownloadProgressPayload, DownloadStatusChangePayload } from '@movie-server/shared';
-import { getDownloads, pauseDownload, resumeDownload, cancelDownload } from '@/lib/api';
+import { getDownloads, pauseDownload, resumeDownload, cancelDownload, deleteDownload } from '@/lib/api';
 import { wsClient } from '@/lib/websocket';
 import { ProgressBar } from '@/components/ProgressBar';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -106,6 +106,16 @@ export default function DownloadsPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this download and its files?')) return;
+    try {
+      await deleteDownload(id);
+      setDownloads((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -160,6 +170,9 @@ export default function DownloadsPage() {
                   )}
                   {!['COMPLETED', 'CANCELED', 'FAILED'].includes(download.status) && (
                     <button onClick={() => handleCancel(download.id)} className="btn btn-danger text-sm">Cancel</button>
+                  )}
+                  {['COMPLETED', 'CANCELED', 'FAILED'].includes(download.status) && (
+                    <button onClick={() => handleDelete(download.id)} className="btn btn-danger text-sm">Delete</button>
                   )}
                 </div>
               </div>

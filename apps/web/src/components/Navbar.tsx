@@ -13,8 +13,6 @@ export function Navbar() {
   const navItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/downloads', label: 'Downloads' },
-    { href: '/library', label: 'Library' },
-    { href: '/upload', label: 'Upload' },
   ];
 
   const handleLogout = async () => {
