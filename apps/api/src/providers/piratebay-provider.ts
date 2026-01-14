@@ -30,8 +30,8 @@ function parseSizeToBytes(sizeStr: string): number | null {
   return Math.round(value * (multipliers[unit] || 1));
 }
 
-// Store search results temporarily to retrieve magnet links
-const resultCache = new Map<string, string>();
+// Store search results temporarily to retrieve magnet links and details
+const resultCache = new Map<string, { magnet: string; title: string }>();
 
 /**
  * PirateBayProvider - A source provider using piratebay-scraper.
@@ -55,14 +55,15 @@ export class PirateBayProvider implements SourceProvider {
         // Create a unique ID for this result
         const resultId = `pb-${Date.now()}-${index}`;
         
-        // Cache the magnet link
+        // Cache the magnet link and title
+        const title = item.title || 'Unknown';
         if (item.link) {
-          resultCache.set(resultId, item.link);
+          resultCache.set(resultId, { magnet: item.link, title });
         }
 
         return {
           id: resultId,
-          title: item.title || 'Unknown',
+          title,
           sizeBytes: parseSizeToBytes(item.size || ''),
           seeds: item.seeders ?? null,
           peers: item.leechers ?? null,
@@ -81,15 +82,25 @@ export class PirateBayProvider implements SourceProvider {
   async getMagnet(resultId: string): Promise<string> {
     logger.info({ provider: this.name, resultId }, 'Getting magnet for result');
 
-    const magnet = resultCache.get(resultId);
-    if (!magnet) {
+    const cached = resultCache.get(resultId);
+    if (!cached) {
       throw new Error(`Magnet not found for result: ${resultId}`);
     }
 
-    // Clean up cache entry after use
+    // Don't delete cache entry yet - getDetails may be called after
+    return cached.magnet;
+  }
+
+  async getDetails(resultId: string): Promise<Record<string, unknown>> {
+    const cached = resultCache.get(resultId);
+    if (!cached) {
+      return { title: resultId };
+    }
+
+    // Clean up cache entry after getting details
     resultCache.delete(resultId);
 
-    return magnet;
+    return { title: cached.title };
   }
 }
 

@@ -42,7 +42,7 @@ class NtfyService {
   /**
    * Get the topic for a specific user (base topic + username)
    */
-  private getTopicForUser(username?: string): string {
+  getTopicForUser(username?: string): string {
     if (username) {
       return `${this.topic}-${username}`;
     }

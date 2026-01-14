@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, ntfyTopic, logout } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const navItems = [
     { href: '/', label: 'Dashboard' },
@@ -18,6 +20,14 @@ export function Navbar() {
   const handleLogout = async () => {
     await logout();
     window.location.href = '/login';
+  };
+
+  const handleCopyNtfyTopic = async () => {
+    if (ntfyTopic) {
+      await navigator.clipboard.writeText(ntfyTopic);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -49,6 +59,15 @@ export function Navbar() {
           <div className="flex items-center">
             {user && (
               <div className="flex items-center space-x-4">
+                {ntfyTopic && (
+                  <button
+                    onClick={handleCopyNtfyTopic}
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
+                    title={`Copy ntfy topic: ${ntfyTopic}`}
+                  >
+                    🔔 {copied ? 'Copied!' : 'ntfy'}
+                  </button>
+                )}
                 <span className="text-sm text-gray-600 dark:text-gray-300">
                   {user.username}
                 </span>

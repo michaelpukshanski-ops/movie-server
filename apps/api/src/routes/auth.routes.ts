@@ -5,6 +5,7 @@ import { createSession, deleteSession, getSession } from '../services/session.se
 import { logAudit } from '../services/audit.service.js';
 import { config } from '../config.js';
 import { DEFAULTS } from '@movie-server/shared';
+import { ntfyService } from '../services/ntfy.service.js';
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   // Signup
@@ -136,9 +137,12 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Get ntfy topic for user if enabled
+    const ntfyTopic = ntfyService.isEnabled() ? ntfyService.getTopicForUser(user.username) : null;
+
     return reply.send({
       success: true,
-      data: { user },
+      data: { user, ntfyTopic },
     });
   });
 }

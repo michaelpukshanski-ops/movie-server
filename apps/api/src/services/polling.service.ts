@@ -138,6 +138,17 @@ async function pollQBittorrent(): Promise<void> {
           ntfyService.notifyDownloadComplete(download.name, torrent.size, user?.username).catch((error) => {
             logger.error({ error }, 'Failed to send download complete notification');
           });
+
+          // Remove torrent from qBittorrent (keep files)
+          qbittorrentService.deleteTorrent(qbHash, false).then((success) => {
+            if (success) {
+              logger.info({ hash: qbHash, name: download.name }, 'Removed completed torrent from qBittorrent');
+            } else {
+              logger.warn({ hash: qbHash, name: download.name }, 'Failed to remove completed torrent from qBittorrent');
+            }
+          }).catch((error) => {
+            logger.error({ error, hash: qbHash }, 'Error removing torrent from qBittorrent');
+          });
         }
 
         // Handle failure

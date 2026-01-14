@@ -52,10 +52,10 @@ export async function logout(): Promise<void> {
   await fetchApi('/api/auth/logout', { method: 'POST' });
 }
 
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<{ user: User; ntfyTopic: string | null } | null> {
   try {
-    const response = await fetchApi<{ user: User }>('/api/auth/me');
-    return response.data?.user ?? null;
+    const response = await fetchApi<{ user: User; ntfyTopic: string | null }>('/api/auth/me');
+    return response.data ?? null;
   } catch {
     return null;
   }
