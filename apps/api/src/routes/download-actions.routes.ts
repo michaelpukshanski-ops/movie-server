@@ -136,11 +136,13 @@ export async function downloadActionsRoutes(fastify: FastifyInstance): Promise<v
   fastify.delete('/api/downloads/:id', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     const params = downloadIdParamSchema.safeParse(request.params);
     if (!params.success) {
+      logger.warn({ params: request.params, error: params.error }, 'Invalid download ID for delete');
       return reply.status(400).send({ success: false, error: 'Invalid download ID' });
     }
 
     const download = getDownloadByIdForUser(params.data.id, request.user!.id);
     if (!download) {
+      logger.warn({ downloadId: params.data.id, userId: request.user!.id }, 'Download not found for delete');
       return reply.status(404).send({ success: false, error: 'Download not found' });
     }
 
