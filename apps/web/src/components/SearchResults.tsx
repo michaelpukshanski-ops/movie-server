@@ -37,7 +37,7 @@ export function SearchResults({ results, onConfirm, loading }: SearchResultsProp
           className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate">
+            <h3 className="font-medium text-gray-900 dark:text-white break-words">
               {result.title}
             </h3>
             <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
