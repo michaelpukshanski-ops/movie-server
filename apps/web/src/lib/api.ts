@@ -121,7 +121,13 @@ export async function cancelDownload(id: string): Promise<Download> {
 }
 
 export async function deleteDownload(id: string): Promise<void> {
-  await fetchApi(`/api/downloads/${id}`, {
+  const response = await fetch(`/api/downloads/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
   });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || 'Delete failed');
+  }
 }
