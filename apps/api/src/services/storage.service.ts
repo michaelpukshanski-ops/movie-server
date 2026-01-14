@@ -5,7 +5,6 @@ import { plexService } from './plex.service.js';
 import {
   getAllLibraryFilesOldestFirst,
   deleteLibraryFile,
-  getLibraryFileByPath,
   getAbsoluteFilePath,
 } from './library.service.js';
 
