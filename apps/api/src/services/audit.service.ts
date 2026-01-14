@@ -12,6 +12,7 @@ export type AuditAction =
   | 'DOWNLOAD_PAUSE'
   | 'DOWNLOAD_RESUME'
   | 'DOWNLOAD_CANCEL'
+  | 'DOWNLOAD_DELETE'
   | 'FILE_UPLOAD'
   | 'FILE_DOWNLOAD';
 
