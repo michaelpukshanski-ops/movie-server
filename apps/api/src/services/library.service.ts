@@ -3,8 +3,8 @@ import { db } from '../db/index.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import type { LibraryFile, PaginatedResponse } from '@movie-server/shared';
-import { readdirSync, statSync, existsSync } from 'fs';
-import { join, basename, resolve, relative } from 'path';
+import { readdirSync, statSync, existsSync, unlinkSync, rmdirSync } from 'fs';
+import { join, basename, resolve, relative, dirname } from 'path';
 import { lookup } from 'mime-types';
 
 interface LibraryFileRow {
@@ -151,5 +151,78 @@ export function scanDownloadDirectory(): void {
   
   scanDir(config.downloadDir);
   logger.info('Download directory scan complete');
+}
+
+/**
+ * Get all library files ordered by creation date (oldest first)
+ */
+export function getAllLibraryFilesOldestFirst(): LibraryFile[] {
+  const stmt = db.prepare(`
+    SELECT * FROM library_files
+    ORDER BY created_at ASC
+  `);
+  const rows = stmt.all() as LibraryFileRow[];
+  return rows.map(rowToLibraryFile);
+}
+
+/**
+ * Delete a library file from disk and database
+ * Also tries to clean up empty parent directories
+ */
+export function deleteLibraryFile(id: string): boolean {
+  const file = getLibraryFileById(id);
+  if (!file) {
+    logger.warn({ id }, 'Library file not found for deletion');
+    return false;
+  }
+
+  try {
+    const absolutePath = getAbsoluteFilePath(file);
+
+    // Delete the file from disk
+    if (existsSync(absolutePath)) {
+      unlinkSync(absolutePath);
+      logger.info({ path: absolutePath }, 'Deleted file from disk');
+
+      // Try to clean up empty parent directories
+      let parentDir = dirname(absolutePath);
+      const downloadDirResolved = resolve(config.downloadDir);
+
+      while (parentDir !== downloadDirResolved && parentDir.startsWith(downloadDirResolved)) {
+        try {
+          const entries = readdirSync(parentDir);
+          if (entries.length === 0) {
+            rmdirSync(parentDir);
+            logger.info({ path: parentDir }, 'Removed empty directory');
+            parentDir = dirname(parentDir);
+          } else {
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
+    }
+
+    // Delete from database
+    const stmt = db.prepare('DELETE FROM library_files WHERE id = ?');
+    stmt.run(id);
+
+    logger.info({ id, name: file.name }, 'Deleted library file');
+    return true;
+  } catch (error) {
+    logger.error({ error, id, name: file.name }, 'Failed to delete library file');
+    return false;
+  }
+}
+
+/**
+ * Get library file by its absolute path
+ */
+export function getLibraryFileByPath(absolutePath: string): LibraryFile | undefined {
+  const relativePath = relative(config.downloadDir, absolutePath);
+  const stmt = db.prepare('SELECT * FROM library_files WHERE path = ?');
+  const row = stmt.get(relativePath) as LibraryFileRow | undefined;
+  return row ? rowToLibraryFile(row) : undefined;
 }
 

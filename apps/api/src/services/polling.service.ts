@@ -4,6 +4,7 @@ import { qbittorrentService } from './qbittorrent.service.js';
 import { wsService } from './websocket.service.js';
 import { plexService } from './plex.service.js';
 import { ntfyService } from './ntfy.service.js';
+import { checkAndCleanupStorage } from './storage.service.js';
 import {
   getActiveDownloads,
   updateDownloadProgress,
@@ -155,6 +156,11 @@ async function pollQBittorrent(): Promise<void> {
             }
           }).catch((error) => {
             logger.error({ error, hash: qbHash }, 'Error removing torrent from qBittorrent');
+          });
+
+          // Check and cleanup storage if needed
+          checkAndCleanupStorage().catch((error) => {
+            logger.error({ error }, 'Storage cleanup failed after download completion');
           });
         }
 

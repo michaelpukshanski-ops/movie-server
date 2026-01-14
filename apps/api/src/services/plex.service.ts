@@ -125,6 +125,89 @@ class PlexService {
   }
 
   /**
+   * Get all media items from a library section with their watched status
+   */
+  async getLibraryItems(sectionKey: string): Promise<Array<{ ratingKey: string; title: string; viewCount: number; lastViewedAt?: number; file?: string }>> {
+    if (!this.isEnabled()) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/library/sections/${sectionKey}/all?X-Plex-Token=${this.token}`,
+        { headers: { Accept: 'application/json' } }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Plex API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json() as {
+        MediaContainer?: {
+          Metadata?: Array<{
+            ratingKey: string;
+            title: string;
+            viewCount?: number;
+            lastViewedAt?: number;
+            Media?: Array<{
+              Part?: Array<{ file?: string }>;
+            }>;
+          }>;
+        };
+      };
+
+      const metadata = data.MediaContainer?.Metadata ?? [];
+      return metadata.map((item) => ({
+        ratingKey: item.ratingKey,
+        title: item.title,
+        viewCount: item.viewCount ?? 0,
+        lastViewedAt: item.lastViewedAt,
+        file: item.Media?.[0]?.Part?.[0]?.file,
+      }));
+    } catch (error) {
+      logger.error({ error, sectionKey }, 'Failed to get Plex library items');
+      return [];
+    }
+  }
+
+  /**
+   * Get all watched media files from Plex
+   * Returns file paths that have been watched (viewCount > 0)
+   */
+  async getWatchedFiles(): Promise<Array<{ file: string; title: string; lastViewedAt?: number }>> {
+    if (!this.isEnabled()) {
+      return [];
+    }
+
+    try {
+      const libraries = await this.getLibraries();
+      const mediaLibraries = libraries.filter(
+        (lib) => lib.type === 'movie' || lib.type === 'show'
+      );
+
+      const watchedFiles: Array<{ file: string; title: string; lastViewedAt?: number }> = [];
+
+      for (const lib of mediaLibraries) {
+        const items = await this.getLibraryItems(lib.key);
+        for (const item of items) {
+          if (item.viewCount > 0 && item.file) {
+            watchedFiles.push({
+              file: item.file,
+              title: item.title,
+              lastViewedAt: item.lastViewedAt,
+            });
+          }
+        }
+      }
+
+      return watchedFiles;
+    } catch (error) {
+      logger.error({ error }, 'Failed to get watched files from Plex');
+      return [];
+    }
+  }
+
+  /**
    * Check Plex server connectivity
    */
   async healthCheck(): Promise<{ connected: boolean; serverName?: string }> {
