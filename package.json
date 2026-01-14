@@ -12,7 +12,8 @@
     "db:init": "npm run db:init -w @movie-server/api",
     "db:reset": "npm run db:reset -w @movie-server/api",
     "clean": "rm -rf apps/*/dist apps/*/.next packages/*/dist node_modules/.cache",
-    "update": "git pull && npm run build && launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.michael.server.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.michael.server.plist"
+    "update": "git pull && npm run build && launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.michael.server.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.michael.server.plist",
+    "debug": "git pull && launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.michael.server.plist && npm run dev"
   },
   "workspaces": [
     "packages/*",
