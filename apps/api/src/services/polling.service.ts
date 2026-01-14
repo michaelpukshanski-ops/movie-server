@@ -10,6 +10,7 @@ import {
   updateDownloadStatus,
   setDownloadSavePath,
   getDownloadUserId,
+  updateDownloadName,
 } from './download.service.js';
 import { getUserById } from './user.service.js';
 import { addLibraryFile } from './library.service.js';
@@ -76,6 +77,12 @@ async function pollQBittorrent(): Promise<void> {
       if (!torrent) {
         logger.warn({ downloadId: download.id, qbHash }, 'Torrent not found in qBittorrent');
         continue;
+      }
+
+      // Update name from qBittorrent if it looks like a placeholder (starts with pb- or similar)
+      if (download.name.match(/^pb-\d+-\d+$/) && torrent.name) {
+        updateDownloadName(download.id, torrent.name);
+        download.name = torrent.name; // Update local reference for notifications
       }
 
       // Update progress

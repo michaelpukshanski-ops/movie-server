@@ -190,6 +190,13 @@ export function setDownloadSavePath(id: string, savePath: string): void {
   stmt.run(savePath, id);
 }
 
+export function updateDownloadName(id: string, name: string): void {
+  const stmt = db.prepare(`
+    UPDATE downloads SET name = ?, updated_at = datetime('now') WHERE id = ?
+  `);
+  stmt.run(name, id);
+}
+
 export function getActiveDownloads(): Download[] {
   const stmt = db.prepare(`
     SELECT * FROM downloads 

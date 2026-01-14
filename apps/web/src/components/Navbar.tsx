@@ -24,9 +24,28 @@ export function Navbar() {
 
   const handleCopyNtfyTopic = async () => {
     if (ntfyTopic) {
-      await navigator.clipboard.writeText(ntfyTopic);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(ntfyTopic);
+        } else {
+          // Fallback for mobile/older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = ntfyTopic;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
     }
   };
 
