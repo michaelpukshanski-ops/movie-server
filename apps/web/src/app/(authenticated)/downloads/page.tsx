@@ -143,9 +143,9 @@ export default function DownloadsPage() {
           {downloads.map((download) => (
             <div key={download.id} className="card">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white break-words">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <h3 className="font-medium text-gray-900 dark:text-white break-all">
                       {download.name}
                     </h3>
                     <StatusBadge status={download.status} />
