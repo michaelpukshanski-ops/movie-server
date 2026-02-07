@@ -4,6 +4,7 @@ import { qbittorrentService } from './qbittorrent.service.js';
 import { wsService } from './websocket.service.js';
 import { plexService } from './plex.service.js';
 import { ntfyService } from './ntfy.service.js';
+import { emailService } from './email.service.js';
 import { checkAndCleanupStorage } from './storage.service.js';
 import {
   getActiveDownloads,
@@ -14,7 +15,7 @@ import {
   updateDownloadName,
 } from './download.service.js';
 import { getUserById } from './user.service.js';
-import { addLibraryFile } from './library.service.js';
+import { addLibraryFile, getAbsoluteFilePath } from './library.service.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -122,13 +123,21 @@ async function pollQBittorrent(): Promise<void> {
           setDownloadSavePath(download.id, torrent.save_path);
           wsService.sendDownloadCompleted(download.id);
 
-          // Add files to library
+          // Add files to library and send ebooks to Kindle
           const files = await qbittorrentService.getTorrentFiles(qbHash);
           for (const file of files) {
             const filePath = join(torrent.save_path, file.name);
             if (existsSync(filePath)) {
               try {
-                addLibraryFile(filePath, download.id);
+                const libraryFile = addLibraryFile(filePath, download.id);
+
+                // Check if file is an ebook and send to Kindle
+                if (emailService.isEbook(file.name)) {
+                  const absolutePath = getAbsoluteFilePath(libraryFile);
+                  emailService.sendEbookToKindle(absolutePath, file.name).catch((error) => {
+                    logger.error({ error, fileName: file.name }, 'Failed to send ebook to Kindle');
+                  });
+                }
               } catch (error) {
                 logger.error({ filePath, error }, 'Failed to add file to library');
               }
