@@ -48,7 +48,10 @@ export async function signup(username: string, password: string, confirmPassword
 }
 
 export async function logout(): Promise<void> {
-  await fetchApi('/api/auth/logout', { method: 'POST' });
+  await fetchApi('/api/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
 }
 
 export async function getCurrentUser(): Promise<{ user: User; ntfyTopic: string | null } | null> {
